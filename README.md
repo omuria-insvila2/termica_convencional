@@ -1,0 +1,1 @@
+# termica_convencional
