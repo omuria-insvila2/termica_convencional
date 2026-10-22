@@ -1,0 +1,747 @@
+<!doctype html>
+<html lang="ca">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Simulador central tèrmica</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: scene + controls left, explanation panel right; energy chain, balance and questions full-width below. */
+:root{
+  --bg:#edf2f5; --surface:#fbfcfd; --ink:#15222c; --muted:#556773; --line:#cdd8df; --accent:#1d5c9e;
+  --sky:#d9e9f3; --mtn:#c6d8e3; --earth:#bba889; --earth-line:#a48f6d; --concrete:#c6cbce; --concrete-line:#9aa2a7;
+  --house:#e6eaed; --roof:#7e8b94; --steel:#66727b; --copper:#b8733a;
+  --water:#2f78c4; --water-top:#5b9ad8; --hot-pipe:#f1bcb6; --gas-pipe:#e4d2bd; --air:#9fb4c3;
+  --puff:#ffffff; --smoke:#6d7377; --coal:#2a2a2c; --leaf:#4f8a3c; --trunk:#7a5534; --pv:#1e3f78; --mirror:#9fc3e6;
+  --sun:#ffbf1f; --night:#0b1730; --cloud:#ffffff;
+  --e-pot:#3b55cf; --e-cin:#0c8599; --e-mec:#d9730d; --e-ele:#d4a106; --e-ter:#e03131;
+  --e-qui:#8d5524; --e-nuc:#ae3ec9; --e-rad:#e64980; --e-loss:#868e96;
+  --halo:#fbfcfd; --hl:#1d5c9e; --chip:#e3eaef;
+  --f-display:'Bricolage Grotesque','Segoe UI',system-ui,sans-serif;
+  --f-body:'Atkinson Hyperlegible',system-ui,-apple-system,sans-serif;
+  --f-mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0d151c; --surface:#15202a; --ink:#e2ebf1; --muted:#93a5b2; --line:#2a3946; --accent:#6aa9e8;
+  --sky:#142430; --mtn:#1c303e; --earth:#41372a; --earth-line:#57493a; --concrete:#4c555c; --concrete-line:#66707a;
+  --house:#22303b; --roof:#56636d; --steel:#94a1ab; --copper:#d48b4e;
+  --water:#2563a6; --water-top:#4b8fd4; --hot-pipe:#6e3030; --gas-pipe:#5a4632; --air:#5c7384;
+  --puff:#cdd6dc; --smoke:#8a9096; --coal:#0a0a0b; --leaf:#5fa34a; --trunk:#8a6440; --pv:#2a55a0; --mirror:#5d86ad;
+  --sun:#ffc93c; --night:#03070f; --cloud:#9aa8b3;
+  --e-pot:#8399ff; --e-cin:#3bc9db; --e-mec:#fb923c; --e-ele:#fcc419; --e-ter:#ff6b6b;
+  --e-qui:#c89060; --e-nuc:#da77f2; --e-rad:#f783ac; --e-loss:#8f9aa3;
+  --halo:#15202a; --hl:#6aa9e8; --chip:#1f2d38; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#0d151c; --surface:#15202a; --ink:#e2ebf1; --muted:#93a5b2; --line:#2a3946; --accent:#6aa9e8;
+  --sky:#142430; --mtn:#1c303e; --earth:#41372a; --earth-line:#57493a; --concrete:#4c555c; --concrete-line:#66707a;
+  --house:#22303b; --roof:#56636d; --steel:#94a1ab; --copper:#d48b4e;
+  --water:#2563a6; --water-top:#4b8fd4; --hot-pipe:#6e3030; --gas-pipe:#5a4632; --air:#5c7384;
+  --puff:#cdd6dc; --smoke:#8a9096; --coal:#0a0a0b; --leaf:#5fa34a; --trunk:#8a6440; --pv:#2a55a0; --mirror:#5d86ad;
+  --sun:#ffc93c; --night:#03070f; --cloud:#9aa8b3;
+  --e-pot:#8399ff; --e-cin:#3bc9db; --e-mec:#fb923c; --e-ele:#fcc419; --e-ter:#ff6b6b;
+  --e-qui:#c89060; --e-nuc:#da77f2; --e-rad:#f783ac; --e-loss:#8f9aa3;
+  --halo:#15202a; --hl:#6aa9e8; --chip:#1f2d38; color-scheme:dark }
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:24px 48px;margin:0}
+.wrap{max-width:1240px;margin:0 auto;display:grid;gap:22px}
+h1,h2{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.1}
+header{display:grid;gap:6px}
+.eyebrow{font-size:12.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:700}
+h1{font-size:clamp(28px,4.4vw,44px);font-weight:800;letter-spacing:-.01em}
+.intro{max-width:72ch;color:var(--muted);margin:0}
+.modes{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.modes button{border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:9px 16px;border-radius:999px;font-weight:700;font-size:15px}
+.modes button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.main{display:grid;grid-template-columns:minmax(0,1fr) 350px;gap:20px;align-items:start}
+@media (max-width:940px){.main{grid-template-columns:minmax(0,1fr)}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px}
+.scene-card{overflow:hidden}
+svg#scene{display:block;width:100%;height:auto}
+
+/* scene */
+.sky{fill:var(--sky)} .mtn{fill:var(--mtn)} .night{fill:var(--night)}
+.earth{fill:var(--earth)} .hatch-line{stroke:var(--earth-line);stroke-width:2} .groundline{stroke:var(--earth-line);stroke-width:2}
+.house{fill:var(--house);stroke:var(--roof);stroke-width:2} .roof{fill:var(--roof)}
+.concrete{fill:var(--concrete);stroke:var(--concrete-line);stroke-width:2}
+.inner{fill:var(--house)}
+.steel{fill:var(--steel)}
+.turb{fill:var(--surface);stroke:var(--steel);stroke-width:3}
+.spin{stroke:var(--e-mec);stroke-width:3;stroke-dasharray:5 6;fill:none}
+.stator{fill:var(--surface);stroke:var(--steel);stroke-width:3}
+.rotor{fill:var(--chip);stroke:var(--e-mec);stroke-width:1.5}
+.glow{fill:var(--e-ele);opacity:0}
+.shaftline{stroke:var(--e-mec);stroke-width:4}
+.cond{fill:var(--surface);stroke:var(--steel);stroke-width:3} .ctube{stroke:var(--water-top);stroke-width:3}
+.ctower{fill:var(--concrete);stroke:var(--concrete-line);stroke-width:2}
+.puff{fill:var(--puff)} .smoke{fill:var(--smoke)} .co2{fill:var(--e-loss)}
+.flame{fill:var(--e-ter)} .flame-in{fill:var(--e-ele)}
+.coal{fill:var(--coal)}
+.pipe-wall{stroke:var(--steel);stroke-width:13;fill:none;stroke-linejoin:round}
+.pipe-in{stroke:var(--water);stroke-width:7;fill:none;stroke-linejoin:round}
+.pipe-in.hot{stroke:var(--hot-pipe)} .pipe-in.gas{stroke:var(--gas-pipe)} .pipe-in.air{stroke:var(--air)}
+.cable{stroke:var(--steel);stroke-width:4;fill:none}
+.cable.ug{stroke-dasharray:2 0}
+.flow{stroke:var(--e-ele);stroke-width:4;fill:none;stroke-dasharray:8 14;stroke-linecap:round;opacity:0}
+.trafo{fill:var(--steel)} .trafo-fin{stroke:var(--surface);stroke-width:2;opacity:.6} .bushing{fill:var(--concrete-line)}
+.tower{stroke:var(--steel);stroke-width:3;fill:none;stroke-linecap:round}
+.wire{stroke:var(--steel);stroke-width:2;fill:none}
+.lbl-s{fill:var(--muted);font:700 12px var(--f-mono);paint-order:stroke;stroke:var(--halo);stroke-width:4px;stroke-linejoin:round}
+.lbl-m{fill:var(--ink);font:700 13px var(--f-body);paint-order:stroke;stroke:var(--halo);stroke-width:4px;stroke-linejoin:round}
+.contain{fill:var(--concrete);stroke:var(--concrete-line);stroke-width:2}
+.vessel{fill:var(--water);stroke:var(--steel);stroke-width:4}
+.fuel{fill:var(--e-nuc)} .fuel-glow{fill:var(--e-nuc)} .crod{fill:var(--ink)}
+.sg{fill:var(--surface);stroke:var(--steel);stroke-width:4}
+.trunk{fill:var(--trunk)} .leaf{fill:var(--leaf)}
+.shed{fill:var(--roof)} .pile{fill:var(--e-qui)}
+.conveyor{stroke:var(--steel);stroke-width:5;fill:none;stroke-linecap:round}
+.filter{fill:var(--concrete);stroke:var(--steel);stroke-width:2}
+.sun{fill:var(--sun)} .sunray{stroke:var(--sun);stroke-width:3;stroke-linecap:round}
+.cloud{fill:var(--cloud)}
+.pv{fill:var(--pv);stroke:var(--steel);stroke-width:1.5} .pvline{stroke:var(--surface);stroke-width:1;opacity:.55}
+.post{stroke:var(--steel);stroke-width:4}
+.mirror{stroke:var(--mirror);stroke-width:6;stroke-linecap:round}
+.ray{stroke:var(--e-rad);stroke-width:2;stroke-dasharray:6 8;fill:none}
+.receptor{fill:var(--steel)} .receptor-glow{fill:var(--e-rad)}
+.tank{fill:var(--surface);stroke:var(--steel);stroke-width:3}
+.salt-h{fill:var(--e-ter)} .salt-c{fill:var(--e-qui);opacity:.75}
+.pipe-in.salt{stroke:var(--hot-pipe)}
+.inset{fill:var(--surface);stroke:var(--line);stroke-width:2}
+.nlayer{fill:#5b8fd8;opacity:.55} .player{fill:#d86b5b;opacity:.5}
+.blade{fill:var(--surface);stroke:var(--steel);stroke-width:2}
+.nacelle{fill:var(--house);stroke:var(--steel);stroke-width:3}
+.gear{fill:var(--surface);stroke:var(--e-mec);stroke-width:3}
+.windline{stroke:var(--e-cin);stroke-width:2.5;stroke-linecap:round}
+.fence{fill:none;stroke:var(--steel);stroke-width:2;stroke-dasharray:4 4}
+.invbox{fill:var(--surface);stroke:var(--steel);stroke-width:3}
+.badge{cursor:pointer}
+.badge circle{fill:var(--ink);stroke:var(--halo);stroke-width:3}
+.badge text{fill:var(--surface);font:700 15px var(--f-mono);text-anchor:middle;dominant-baseline:central}
+.badge.sel circle{fill:var(--accent)}
+.badge:focus{outline:none} .badge:focus-visible circle{stroke:var(--accent);stroke-width:5}
+.part{cursor:pointer;transition:filter .25s}
+.part.sel{filter:drop-shadow(0 0 4px var(--hl)) drop-shadow(0 0 9px var(--hl))}
+@media (max-width:620px){
+  .lbl-s,.lbl-m{display:none}
+  .badge circle{r:25px} .badge text{font-size:25px}
+}
+
+/* part key + legend */
+.partkey{display:flex;flex-wrap:wrap;gap:6px;padding:12px 16px;border-top:1px solid var(--line)}
+.pk{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:999px;padding:5px 12px 5px 5px;font-size:14px;font-weight:700}
+.pk b{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--ink);color:var(--surface);font:700 13px var(--f-mono)}
+.pk[aria-pressed="true"]{border-color:var(--accent)} .pk[aria-pressed="true"] b{background:var(--accent)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;padding:10px 16px;border-top:1px solid var(--line);font-size:13.5px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:12px;height:12px;border-radius:50%;display:inline-block}
+
+/* controls */
+.controls{display:grid;gap:18px;padding:16px;border-top:1px solid var(--line);align-items:end}
+@media (max-width:700px){.controls{grid-template-columns:minmax(0,1fr)!important}}
+.ctl{display:grid;gap:6px;min-width:0}
+.ctl label{display:flex;justify-content:space-between;gap:10px;font-weight:700;font-size:14.5px}
+.ctl output{font-family:var(--f-mono);font-variant-numeric:tabular-nums;color:var(--accent);white-space:nowrap}
+.ctl small{color:var(--muted);font-size:12.5px}
+input[type=range]{width:100%;accent-color:var(--accent);height:28px}
+.btns{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+button{font:inherit;cursor:pointer}
+.btn{border:1px solid var(--line);background:var(--chip);color:var(--ink);padding:9px 14px;border-radius:9px;font-weight:700;font-size:14.5px}
+.btn:hover{border-color:var(--accent)}
+.btn[aria-pressed="true"]{background:var(--accent);color:var(--surface);border-color:var(--accent)}
+.btn:focus-visible,.node:focus-visible,.pk:focus-visible,.modes button:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+/* info panel */
+.info{padding:18px;display:grid;gap:14px;position:sticky;top:max(12px,env(safe-area-inset-top,0px))}
+@media (max-width:940px){.info{position:static}}
+.info h2{font-size:24px;font-weight:800}
+.flowchips{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13.5px}
+.chipE{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:var(--chip);font-weight:700}
+.chipE i{width:10px;height:10px;border-radius:50%}
+.info p{margin:0}
+.now{background:var(--chip);border-radius:10px;padding:10px 12px;display:grid;gap:2px}
+.now .k{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.now .v{font-family:var(--f-mono);font-size:14.5px;font-variant-numeric:tabular-nums}
+.formula{font-family:var(--f-mono);font-size:14px;border-left:3px solid var(--line);padding-left:10px}
+.loss{color:var(--muted);font-size:14.5px;border-left:3px solid var(--e-loss);padding-left:10px}
+.fact{font-size:14.5px;color:var(--muted)} .fact b{color:var(--ink)}
+.nav{display:flex;justify-content:space-between;gap:8px}
+
+/* blocks */
+section.block{padding:20px;display:grid;gap:16px}
+.block-head{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:baseline}
+.block h2{font-size:22px;font-weight:800}
+.block .sub{color:var(--muted);font-size:14.5px;margin:0;max-width:70ch}
+.chain{display:grid;align-items:stretch}
+.node{--c:var(--e-pot);text-align:left;background:var(--bg);border:2px solid transparent;border-radius:12px;padding:12px;display:grid;gap:3px;color:var(--ink);min-width:0;align-content:start}
+.node.sel{border-color:var(--c)}
+.node .dot{width:14px;height:14px;border-radius:50%;background:var(--c)}
+.node .nm{font-family:var(--f-display);font-weight:800;font-size:15.5px;line-height:1.15;color:var(--c)}
+.node .wh{font-size:12.5px;color:var(--muted);line-height:1.3}
+.node .val{font-family:var(--f-mono);font-weight:700;font-size:18px;font-variant-numeric:tabular-nums;margin-top:4px}
+.node .bar{height:6px;border-radius:3px;background:var(--line);overflow:hidden}
+.node .bar span{display:block;height:100%;background:var(--c);transition:width .3s}
+.conn{display:grid;justify-items:center;align-content:center;gap:2px;padding:0 4px;text-align:center;min-width:0}
+.conn svg{width:56px;height:20px}
+.conn svg path{stroke:var(--muted);stroke-width:2.5;fill:none}
+.conn .where{font-size:12px;font-weight:700;line-height:1.2}
+.conn .ls{font-family:var(--f-mono);font-size:11px;color:var(--muted);line-height:1.25}
+@media (max-width:1060px){
+  .chain.long{grid-template-columns:minmax(0,1fr)!important}
+  .chain.long .conn{grid-template-columns:auto auto minmax(0,1fr);gap:10px;padding:6px 0 6px 14px;justify-content:start;text-align:left;justify-items:start}
+  .chain.long .conn svg{transform:rotate(90deg);width:30px}
+}
+@media (max-width:860px){
+  .chain{grid-template-columns:minmax(0,1fr)!important}
+  .conn{grid-template-columns:auto auto minmax(0,1fr);gap:10px;padding:6px 0 6px 14px;justify-content:start;text-align:left;justify-items:start}
+  .conn svg{transform:rotate(90deg);width:30px}
+}
+.balance{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:22px}
+@media (max-width:860px){.balance{grid-template-columns:minmax(0,1fr)}}
+.sbar{display:flex;height:34px;border-radius:8px;overflow:hidden;background:var(--line)}
+.sbar span{height:100%;transition:width .3s}
+.bleg{display:grid;gap:6px;margin-top:12px;font-size:14px}
+.bleg div{display:grid;grid-template-columns:14px 1fr auto;gap:8px;align-items:center}
+.bleg i{width:14px;height:14px;border-radius:4px}
+.bleg b{font-family:var(--f-mono);font-variant-numeric:tabular-nums;font-weight:500}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-content:start}
+.stat{background:var(--bg);border-radius:10px;padding:12px;min-width:0}
+.stat .k{font-size:12.5px;color:var(--muted);font-weight:700}
+.stat .v{font-family:var(--f-mono);font-size:20px;font-weight:700;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.stat small{display:block;color:var(--muted);font-size:12px}
+.note{grid-column:1/-1;font-size:14px;color:var(--muted);margin:0}
+.status{font-weight:700;margin:12px 0 0;padding:10px 12px;border-radius:10px;background:var(--chip)}
+.qs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+@media (max-width:760px){.qs{grid-template-columns:minmax(0,1fr)}}
+details{background:var(--bg);border-radius:10px;padding:12px 14px}
+summary{cursor:pointer;font-weight:700}
+details p{margin:8px 0 0;color:var(--muted)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow" id="eyebrow"></div>
+    <h1 id="h1"></h1>
+    <p class="intro" id="intro"></p>
+    <div class="modes" id="modes" hidden></div>
+  </header>
+
+  <div class="main">
+    <div class="card scene-card">
+      <svg id="scene" viewBox="0 0 1000 560" role="img" aria-label="Tall de la central"></svg>
+      <div class="partkey" id="partkey" role="group" aria-label="Parts de la central"></div>
+      <div class="legend" id="legend" aria-label="Llegenda de colors"></div>
+      <div class="controls" id="controls"></div>
+    </div>
+
+    <aside class="card info" aria-live="polite">
+      <div class="eyebrow" id="iStep"></div>
+      <h2 id="iName"></h2>
+      <div class="flowchips" id="iChips"></div>
+      <p id="iText"></p>
+      <div class="formula" id="iFormula"></div>
+      <div class="now"><span class="k">Ara mateix</span><span class="v" id="iNow">–</span></div>
+      <p class="loss" id="iLoss"></p>
+      <p class="fact" id="iFact"></p>
+      <div class="nav">
+        <button class="btn" id="prevB" type="button">← Anterior</button>
+        <button class="btn" id="nextB" type="button">Següent →</button>
+      </div>
+    </aside>
+  </div>
+
+  <section class="card block">
+    <div class="block-head">
+      <h2>Cadena de transformacions energètiques</h2>
+      <p class="sub" id="chainSub">Valors en megawatts (MW): és l'energia que passa per cada punt cada segon. 1 MW = 1.000.000 J cada segon.</p>
+    </div>
+    <div class="chain" id="chain"></div>
+  </section>
+
+  <section class="card block">
+    <div class="block-head">
+      <h2>Balanç d'energia</h2>
+      <p class="sub" id="balSub"></p>
+    </div>
+    <div class="balance">
+      <div>
+        <div class="sbar" id="sbar"></div>
+        <div class="bleg" id="bleg"></div>
+        <p class="status" id="status" hidden></p>
+      </div>
+      <div class="stats" id="stats"></div>
+    </div>
+  </section>
+
+  <section class="card block">
+    <div class="block-head"><h2>Per pensar</h2><p class="sub">Prova-ho al simulador abans d'obrir la resposta.</p></div>
+    <div class="qs" id="qs"></div>
+  </section>
+</div>
+
+<script>
+/* ===== Motor comú dels simuladors de centrals ===== */
+const NS = 'http://www.w3.org/2000/svg';
+const $ = id => document.getElementById(id);
+const fmt = (n, d = 1) => (isFinite(n) ? n : 0).toLocaleString('ca-ES', {minimumFractionDigits: d, maximumFractionDigits: d});
+const fmt0 = n => Math.round(isFinite(n) ? n : 0).toLocaleString('ca-ES');
+const mwN = v => v < 10 ? fmt(v, 2) : v < 100 ? fmt(v, 1) : fmt0(v);
+const mw = v => mwN(v) + ' MW';
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const ease = (cur, target, dt, rate) => { const n = cur + (target - cur) * Math.min(1, dt * rate); return Math.abs(target - n) < 1e-4 ? target : n; };
+
+const EN = {
+  pot: ['Energia potencial', '--e-pot'], cin: ['Energia cinètica', '--e-cin'], mec: ['Energia mecànica', '--e-mec'],
+  ele: ['Energia elèctrica', '--e-ele'], ter: ['Energia tèrmica', '--e-ter'], qui: ['Energia química', '--e-qui'],
+  nuc: ['Energia nuclear', '--e-nuc'], rad: ['Energia radiant (llum)', '--e-rad'], loss: ['Energia no aprofitada', '--e-loss']
+};
+const chip = (k, txt) => `<span class="chipE"><i style="background:var(${EN[k][1]})"></i>${txt || EN[k][0]}</span>`;
+const ARROW = '<span aria-hidden="true">→</span>';
+const cv = k => `var(${EN[k][1]})`;
+
+/* ---------- peces de dibuix reutilitzables (SVG) ---------- */
+const C = {
+  bg(g = 470, mtn = true) {
+    return `<defs><pattern id="hatch" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="12" class="hatch-line"/></pattern></defs>
+    <rect class="sky" width="1000" height="560"/>
+    ${mtn ? `<path class="mtn" d="M0,${g - 170} L90,${g - 215} L170,${g - 180} L260,${g - 235} L360,${g - 190} L470,${g - 245} L560,${g - 200} L660,${g - 225} L760,${g - 185} L860,${g - 220} L1000,${g - 190} L1000,${g} L0,${g}Z"/>` : ''}
+    <rect class="earth" x="0" y="${g}" width="1000" height="${560 - g}"/><rect fill="url(#hatch)" x="0" y="${g}" width="1000" height="${560 - g}"/>
+    <line class="groundline" x1="0" y1="${g}" x2="1000" y2="${g}"/>`;
+  },
+  hall(x, y, w, g = 470) {
+    return `<polygon class="roof" points="${x - 8},${y} ${x + w + 8},${y} ${x + w - 12},${y - 16} ${x + 12},${y - 16}"/><rect class="house" x="${x}" y="${y}" width="${w}" height="${g - y}"/>`;
+  },
+  steamTurbine(x, cy, w = 110, hs = 15, hb = 35) {
+    let s = `<polygon class="turb" points="${x},${cy - hs} ${x + w},${cy - hb} ${x + w},${cy + hb} ${x},${cy + hs}"/>`;
+    for (let i = 1; i <= 5; i++) { const xi = x + w * i / 6, h = hs + (hb - hs) * i / 6 - 4; s += `<line class="spin" x1="${xi}" y1="${cy - h}" x2="${xi}" y2="${cy + h}"/>`; }
+    return s;
+  },
+  gen(x, cy, w = 80, h = 50) {
+    let s = `<rect class="stator" x="${x}" y="${cy - h / 2}" width="${w}" height="${h}" rx="8"/>
+      <rect class="glow" x="${x + 5}" y="${cy - h / 2 + 5}" width="${w - 10}" height="${h - 10}" rx="5"/>
+      <rect class="rotor" x="${x + 14}" y="${cy - h / 2 + 12}" width="${w - 28}" height="${h - 24}" rx="4"/>`;
+    for (let i = 1; i <= 3; i++) { const xi = x + 14 + (w - 28) * i / 4; s += `<line class="spin" x1="${xi}" y1="${cy - h / 2 + 14}" x2="${xi}" y2="${cy + h / 2 - 14}"/>`; }
+    return s;
+  },
+  shaft(x1, x2, cy) { return `<line class="shaftline" x1="${x1}" y1="${cy}" x2="${x2}" y2="${cy}"/>`; },
+  condenser(x, y, w = 100, h = 48) {
+    let s = `<rect class="cond" x="${x}" y="${y}" width="${w}" height="${h}" rx="6"/>`;
+    for (let i = 1; i <= 3; i++) s += `<line class="ctube" x1="${x + 8}" y1="${y + h * i / 4}" x2="${x + w - 8}" y2="${y + h * i / 4}"/>`;
+    return s;
+  },
+  coolingTower(x, w, top, g = 470) {
+    const m = g - (g - top) * .5;
+    return `<path class="ctower" d="M${x},${g} Q${x + w * .4},${m} ${x + w * .18},${top} L${x + w * .82},${top} Q${x + w * .6},${m} ${x + w},${g}Z"/>`;
+  },
+  transformer(x, g = 470) {
+    let s = `<rect class="bushing" x="${x + 10}" y="${g - 76}" width="8" height="14" rx="2"/><rect class="bushing" x="${x + 38}" y="${g - 76}" width="8" height="14" rx="2"/>
+      <rect class="trafo" x="${x}" y="${g - 64}" width="56" height="64" rx="4"/>`;
+    for (let i = 0; i < 4; i++) s += `<line class="trafo-fin" x1="${x + 10 + i * 12}" y1="${g - 54}" x2="${x + 10 + i * 12}" y2="${g - 8}"/>`;
+    return s;
+  },
+  tower(cx, top, g = 470) {
+    const L = (y) => (cx - 30) + (y - g) * (22 / (top - g)), R = (y) => (cx + 30) - (y - g) * (22 / (top - g));
+    let d = `M${cx - 30},${g} L${cx - 8},${top} M${cx + 30},${g} L${cx + 8},${top} M${cx - 8},${top} L${cx + 8},${top} M${cx - 54},${top + 22} L${cx + 54},${top + 22} M${cx - 46},${top + 22} L${cx - 46},${top + 32} M${cx + 46},${top + 22} L${cx + 46},${top + 32}`;
+    const steps = 5, hgt = g - top;
+    for (let i = 0; i < steps; i++) {
+      const y1 = g - hgt * i / steps - 4, y2 = g - hgt * (i + 1) / steps + 6;
+      d += ` M${L(y1)},${y1} L${R(y2)},${y2} M${R(y1)},${y1} L${L(y2)},${y2}`;
+    }
+    return `<path class="tower" d="${d}"/>`;
+  },
+  pipe(d, cls = '') { return `<path class="pipe-wall" d="${d}"/><path class="pipe-in ${cls}" d="${d}"/>`; },
+  cable(d) { return `<path class="cable" d="${d}"/><path class="flow" d="${d}"/>`; },
+  badge(n, x, y) { return `<g class="badge" data-stage="${n}" tabindex="0" role="button" aria-label="Part ${n}"><circle cx="${x}" cy="${y}" r="15"/><text x="${x}" y="${y}">${n}</text></g>`; },
+  flame(x, base, h, w) {
+    return `<g class="flamegrp" data-base="${base}"><path class="flame" d="M${x - w / 2},${base} Q${x - w / 2},${base - h * .55} ${x},${base - h} Q${x + w / 2},${base - h * .55} ${x + w / 2},${base} Z"/><path class="flame-in" d="M${x - w / 4},${base} Q${x - w / 4},${base - h * .35} ${x},${base - h * .6} Q${x + w / 4},${base - h * .35} ${x + w / 4},${base} Z"/></g>`;
+  },
+  tree(x, g, s = 1) {
+    return `<rect class="trunk" x="${x - 4 * s}" y="${g - 40 * s}" width="${8 * s}" height="${40 * s}"/><circle class="leaf" cx="${x}" cy="${g - 58 * s}" r="${24 * s}"/><circle class="leaf" cx="${x - 14 * s}" cy="${g - 44 * s}" r="${16 * s}"/><circle class="leaf" cx="${x + 15 * s}" cy="${g - 46 * s}" r="${17 * s}"/>`;
+  },
+  /* bloc de vapor comú: sala, turbina, alternador, condensador, torre de refrigeració, transformador i línia */
+  steamBlock(o) {
+    const {hx, hw = 300, ty = 360, tx, gx, cx0, ctx, ctw = 100, trx, tcx, steamD, feedD, coolD, cableD, st = {turb: 3, gen: 4, cool: 5, trafo: 6, line: 6}} = o;
+    return `
+    <g class="part" data-stage="${st.cool}">${C.coolingTower(ctx, ctw, 236)}</g>
+    ${C.hall(hx, 300, hw)}
+    <g class="part" data-stage="${st.cool}">
+      ${C.pipe(coolD[0], 'hot')}${C.pipe(coolD[1])}
+      ${C.condenser(cx0, 410)}
+      <g id="pCool"></g>
+    </g>
+    <g class="part" data-stage="${st.turb}">
+      ${C.pipe(steamD, 'hot')}
+      ${C.pipe(feedD)}
+      <rect class="turb" x="${tx + 78}" y="${ty + 24}" width="24" height="${410 - ty - 22}"/>
+      ${C.shaft(tx - 14, gx + 90, ty)}
+      ${C.steamTurbine(tx, ty)}
+      <g id="pSteam"></g><g id="pFeed"></g>
+    </g>
+    <g class="part" data-stage="${st.gen}">${C.gen(gx, ty)}</g>
+    <g class="part" data-stage="${st.gen}">${C.cable(cableD)}</g>
+    <g class="part" data-stage="${st.trafo}">${C.transformer(trx)}</g>
+    <g class="part" data-stage="${st.line}">${C.tower(tcx, 240)}
+      <path class="wire" d="M${trx + 42},394 Q${(trx + 42 + tcx - 46) / 2},320 ${tcx - 46},272"/><path class="flow" d="M${trx + 42},394 Q${(trx + 42 + tcx - 46) / 2},320 ${tcx - 46},272"/>
+      <path class="wire" d="M${tcx + 46},272 Q${tcx + 70},276 1000,262"/><path class="flow" d="M${tcx + 46},272 Q${tcx + 70},276 1000,262"/>
+    </g>
+    <g id="plumeCT"></g>`;
+  }
+};
+
+/* ---------- animació ---------- */
+const api = {
+  parts(gid, d, n, r, colorFn) {
+    const g = $(gid); const p = document.createElementNS(NS, 'path');
+    p.setAttribute('d', d); p.setAttribute('fill', 'none'); p.setAttribute('stroke', 'none'); g.appendChild(p);
+    const L = p.getTotalLength(); const arr = [];
+    for (let i = 0; i < n; i++) { const c = document.createElementNS(NS, 'circle'); c.setAttribute('r', r); g.appendChild(c); arr.push({el: c, s: i / n}); }
+    return {
+      step(dt, px, frac) {
+        const vis = Math.round(n * clamp(frac, 0, 1));
+        arr.forEach((q, i) => {
+          if (i >= vis) { q.el.style.display = 'none'; return; }
+          q.el.style.display = '';
+          q.s = (q.s + dt * px / L) % 1;
+          const pt = p.getPointAtLength(q.s * L);
+          q.el.setAttribute('cx', pt.x.toFixed(1)); q.el.setAttribute('cy', pt.y.toFixed(1));
+          q.el.style.fill = colorFn(q.s);
+        });
+      }
+    };
+  },
+  plume(gid, x, y, o = {}) {
+    const {n = 8, cls = 'puff', rise = 34, drift = 16, grow = 12, life = 3.4, r0 = 9} = o;
+    const g = $(gid); const arr = [];
+    for (let i = 0; i < n; i++) { const c = document.createElementNS(NS, 'circle'); c.setAttribute('class', cls); g.appendChild(c); arr.push({el: c, age: life * i / n}); }
+    return {
+      step(dt, k) {
+        arr.forEach(p => {
+          p.age += dt; if (p.age > life) p.age -= life;
+          const a = p.age / life;
+          p.el.setAttribute('cx', (x + drift * p.age).toFixed(1)); p.el.setAttribute('cy', (y - rise * p.age).toFixed(1));
+          p.el.setAttribute('r', (r0 + grow * p.age).toFixed(1));
+          p.el.style.opacity = (k * (1 - a) * Math.min(1, a * 8) * .85).toFixed(3);
+        });
+      }
+    };
+  },
+  rot(id, cx, cy, a) { const e = $(id); if (e) e.setAttribute('transform', `rotate(${a.toFixed(2)} ${cx} ${cy})`); }
+};
+
+/* ---------- estat i interfície ---------- */
+const S = {c: {}, t: {}, running: true, sel: 1, kwh: 0, ang: 0, dash: 0, out: 0, elec: 0, spin: 0};
+let CUR = null, MODES = [], CACHE = {};
+
+function buildControls(cfg) {
+  const box = $('controls');
+  const n = cfg.controls.length;
+  box.style.gridTemplateColumns = `repeat(${n}, minmax(0,1fr)) auto`;
+  box.innerHTML = cfg.controls.map(c => `<div class="ctl">
+      <label for="c_${c.id}">${c.label} <output id="o_${c.id}"></output></label>
+      <input id="c_${c.id}" type="range" min="${c.min}" max="${c.max}" step="${c.step}" value="${S.c[c.id] ?? c.value}">
+      <small id="h_${c.id}"></small></div>`).join('') +
+    `<div class="btns"><button class="btn" id="playB" type="button">${S.running ? 'Pausa' : 'Continua'}</button>${(cfg.buttons || []).map(b => `<button class="btn" type="button" id="b_${b.id}" aria-pressed="${!!S.t[b.id]}">${b.label}</button>`).join('')}</div>`;
+  cfg.controls.forEach(c => {
+    if (S.c[c.id] == null) S.c[c.id] = c.value;
+    const inp = $('c_' + c.id);
+    const upd = () => { S.c[c.id] = +inp.value; $('o_' + c.id).textContent = c.show(S.c[c.id]); };
+    inp.addEventListener('input', upd); upd();
+  });
+  $('playB').addEventListener('click', () => { S.running = !S.running; $('playB').textContent = S.running ? 'Pausa' : 'Continua'; });
+  (cfg.buttons || []).forEach(b => $('b_' + b.id).addEventListener('click', e => { S.t[b.id] = !S.t[b.id]; e.currentTarget.setAttribute('aria-pressed', S.t[b.id]); }));
+}
+function setCtrl(id, v) {
+  S.c[id] = v; const inp = $('c_' + id); if (inp) inp.value = v;
+  const c = CUR.controls.find(x => x.id === id); if (c) $('o_' + id).textContent = c.show(v);
+}
+
+function buildChain(cfg) {
+  const ch = cfg.chain, el = $('chain');
+  const cols = [];
+  let html = '';
+  ch.nodes.forEach((nd, i) => {
+    cols.push('minmax(0,1fr)');
+    html += `<button class="node" type="button" data-stage="${nd.stage}" style="--c:${cv(nd.e)}"><span class="dot"></span><span class="nm">${nd.name}</span><span class="wh">${nd.where}</span><span class="val" id="nv${i}">–</span><span class="bar"><span id="nb${i}"></span></span></button>`;
+    if (i < ch.nodes.length - 1) {
+      cols.push('86px');
+      html += `<div class="conn"><span class="where">${ch.conns[i]}</span><svg viewBox="0 0 56 20" aria-hidden="true"><path d="M2,10 H50 M42,3 L52,10 L42,17"/></svg><span class="ls" id="nc${i}">–</span></div>`;
+    }
+  });
+  el.innerHTML = html;
+  el.style.gridTemplateColumns = cols.join(' ');
+  el.classList.toggle('long', ch.nodes.length > 5);
+}
+
+function buildBalance(cfg) {
+  $('balSub').textContent = cfg.balanceSub || "L'energia no es crea ni es destrueix: es transforma. La que no surt com a electricitat útil es converteix sobretot en calor que va a parar a l'ambient.";
+  $('sbar').innerHTML = cfg.balance.map((b, i) => `<span id="sb${i}" style="background:${b.c};opacity:${b.op ?? 1}"></span>`).join('');
+  $('bleg').innerHTML = cfg.balance.map((b, i) => `<div><i style="background:${b.c};opacity:${b.op ?? 1}"></i>${b.label}<b id="sp${i}">–</b></div>`).join('');
+  const base = [
+    {k: 'Rendiment global', small: 'electricitat útil ÷ energia que entra', id: 'st_eff'},
+    {k: 'Potència a la xarxa', small: 'megawatts (MW)', id: 'st_p'},
+    {k: 'Llars abastides ara', small: 'consum mitjà ≈ 0,4 kW per llar', id: 'st_h'},
+    {k: 'Energia enviada', small: 'kWh des que has obert la pàgina', id: 'st_kwh'}
+  ];
+  $('stats').innerHTML = base.map(b => `<div class="stat"><div class="k">${b.k}</div><div class="v" id="${b.id}">–</div><small>${b.small}</small></div>`).join('') +
+    (cfg.extraLabels || []).map((x, i) => `<div class="stat"><div class="k">${x.k}</div><div class="v" id="sx${i}">–</div><small id="sxs${i}">${x.small || ''}</small></div>`).join('') +
+    `<p class="note" id="note"></p>`;
+}
+
+function select(n) {
+  const cfg = CUR; S.sel = n;
+  document.querySelectorAll('#scene .part').forEach(g => g.classList.toggle('sel', +g.dataset.stage === n));
+  document.querySelectorAll('#scene .badge').forEach(g => g.classList.toggle('sel', +g.dataset.stage === n));
+  document.querySelectorAll('.pk').forEach(b => b.setAttribute('aria-pressed', +b.dataset.stage === n));
+  document.querySelectorAll('.node').forEach(b => b.classList.toggle('sel', +b.dataset.stage === n));
+  const st = cfg.stages[n - 1];
+  $('iStep').textContent = `Part ${n} de ${cfg.stages.length}`;
+  $('iName').textContent = st.name;
+  $('iChips').innerHTML = st.chips;
+  $('iText').textContent = st.text;
+  $('iFormula').textContent = st.formula || ''; $('iFormula').hidden = !st.formula;
+  $('iLoss').textContent = st.loss || ''; $('iLoss').hidden = !st.loss;
+  $('iFact').innerHTML = st.fact || ''; $('iFact').hidden = !st.fact;
+  $('prevB').disabled = n === 1; $('nextB').disabled = n === cfg.stages.length;
+  updateNow();
+}
+function updateNow() { const st = CUR.stages[S.sel - 1]; $('iNow').textContent = st.now ? st.now(S) : '–'; }
+
+function bindSelectables() {
+  document.querySelectorAll('#scene .part, #scene .badge, .pk, .node').forEach(el => {
+    el.addEventListener('click', () => select(+el.dataset.stage));
+    if (el.classList.contains('badge')) el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(+el.dataset.stage); } });
+  });
+}
+
+function mount(cfg) {
+  CUR = cfg;
+  $('eyebrow').textContent = cfg.eyebrow; $('h1').textContent = cfg.title; $('intro').textContent = cfg.intro;
+  $('scene').setAttribute('aria-label', cfg.aria || cfg.title);
+  $('scene').innerHTML = cfg.svg();
+  $('partkey').innerHTML = cfg.stages.map((st, i) => `<button class="pk" type="button" data-stage="${i + 1}"><b>${i + 1}</b>${st.short || st.name}</button>`).join('');
+  $('legend').innerHTML = cfg.legend.map(k => `<span><i style="background:${cv(k)}"></i>${EN[k][0]}</span>`).join('');
+  buildControls(cfg); buildChain(cfg); buildBalance(cfg);
+  $('qs').innerHTML = cfg.questions.map(q => `<details><summary>${q[0]}</summary><p>${q[1]}</p></details>`).join('');
+  CACHE = {
+    spins: [...document.querySelectorAll('#scene .spin')], flows: [...document.querySelectorAll('#scene .flow')],
+    glows: [...document.querySelectorAll('#scene .glow')], flames: [...document.querySelectorAll('#scene .flamegrp')]
+  };
+  cfg.init(S, api);
+  cfg.update(S, 0);
+  bindSelectables();
+  select(1); updateUI();
+}
+
+function updateUI() {
+  const cfg = CUR, s = S;
+  const max = s.barMax || s.nodes[0] || 1;
+  s.nodes.forEach((v, i) => { $('nv' + i).textContent = mw(v); $('nb' + i).style.width = (max > 1e-6 ? clamp(v / max, 0, 1) * 100 : 0) + '%'; });
+  s.conn.forEach((t, i) => { $('nc' + i).textContent = t; });
+  const tot = s.segs.reduce((a, b) => a + b, 0);
+  s.segs.forEach((v, i) => { const p = tot > 1e-6 ? v / tot * 100 : 0; $('sb' + i).style.width = p + '%'; $('sp' + i).textContent = tot > 1e-6 ? fmt(p, 1) + ' %' : '–'; });
+  $('status').hidden = !s.status; $('status').textContent = s.status || '';
+  $('st_eff').textContent = s.eff != null && s.eff > 0 ? fmt(s.eff * 100, 1) + ' %' : '–';
+  $('st_p').textContent = mwN(s.out);
+  $('st_h').textContent = fmt0(s.out * 1000 / 0.4);
+  $('st_kwh').textContent = fmt0(s.kwh);
+  (cfg.extra ? cfg.extra(s) : []).forEach((x, i) => { $('sx' + i).textContent = x.v; if (x.small != null) $('sxs' + i).textContent = x.small; });
+  $('note').innerHTML = cfg.note ? cfg.note(s) : '';
+  cfg.controls.forEach(c => { $('h_' + c.id).textContent = c.help ? c.help(s) : ''; });
+  updateNow();
+}
+
+let last = performance.now(), uiT = 0;
+function frame(t) {
+  const dt = Math.min(.05, (t - last) / 1000); last = t;
+  const s = S, cfg = CUR;
+  cfg.update(s, dt);
+  const rdt = s.running ? dt : 0;
+  if (s.running) { s.ang += dt * (s.spin || 0); s.dash -= dt * (25 + 90 * (s.elec || 0)); s.kwh += s.out * 1000 * dt / 3600; }
+  CACHE.spins.forEach(e => { e.style.strokeDashoffset = (-s.ang * .12).toFixed(1); });
+  const on = s.elec > .003;
+  CACHE.flows.forEach(e => { e.style.opacity = on ? .95 : 0; e.style.strokeDashoffset = s.dash.toFixed(1); });
+  const gl = on ? (.3 + .6 * clamp(s.elec, 0, 1)) * (s.running ? (.8 + .2 * Math.sin(t / 110)) : 1) : 0;
+  CACHE.glows.forEach(e => { e.style.opacity = gl.toFixed(3); });
+  if (CACHE.flames.length) CACHE.flames.forEach((g, i) => {
+    const b = +g.dataset.base, k = Math.max(0.001, (s.flame || 0) * (s.running ? (.85 + .15 * Math.sin(t / 80 + i * 2)) : 1));
+    g.setAttribute('transform', `translate(0 ${b}) scale(1 ${k.toFixed(3)}) translate(0 ${-b})`);
+  });
+  cfg.animate(s, t, rdt, api);
+  uiT += dt; if (uiT > .15) { uiT = 0; updateUI(); }
+  requestAnimationFrame(frame);
+}
+
+function START(modes) {
+  MODES = modes;
+  if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) S.running = false;
+  $('prevB').addEventListener('click', () => S.sel > 1 && select(S.sel - 1));
+  $('nextB').addEventListener('click', () => S.sel < CUR.stages.length && select(S.sel + 1));
+  if (modes.length > 1) {
+    const m = $('modes'); m.hidden = false;
+    m.innerHTML = modes.map((md, i) => `<button type="button" data-i="${i}" aria-pressed="${i === 0}">${md.modeLabel}</button>`).join('');
+    m.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+      m.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b));
+      mount(modes[+b.dataset.i]);
+    }));
+  }
+  mount(modes[0]);
+  requestAnimationFrame(t => { last = t; frame(t); });
+}
+
+/* ===== Central tèrmica convencional (carbó) ===== */
+(function () {
+  let coal, steam, feed, cool, plumeCT, smoke;
+  const PCI = 25; // MJ/kg
+  const cfg = {
+    eyebrow: "Tecnologia i Digitalització · 2n d'ESO · Energia",
+    title: 'La central tèrmica convencional',
+    intro: "Regula quant carbó entra a la caldera i segueix el camí de l'energia: des de l'energia química del combustible fins a l'electricitat que surt cap a la xarxa. Toca cada número del dibuix per saber què passa en aquella part.",
+    aria: "Tall d'una central tèrmica de carbó amb parc de carbó, molí, caldera, xemeneia, turbina, alternador, condensador, torre de refrigeració, transformador i línia d'alta tensió",
+    legend: ['qui', 'ter', 'mec', 'ele', 'loss'],
+    controls: [{id: 'carbo', label: 'Carbó que entra a la caldera', min: 0, max: 60, step: 2, value: 40, show: v => v + ' kg/s',
+      help: s => `≈ ${fmt0(s.c.carbo * 3.6)} tones de carbó cada hora`}],
+    svg: () => `${C.bg()}
+      <g class="part" data-stage="7">
+        <rect class="filter" x="46" y="212" width="160" height="22"/>
+        <rect class="filter" x="98" y="202" width="44" height="42" rx="4"/>
+        <text class="lbl-s" x="120" y="260" text-anchor="middle">Filtres</text>
+        <rect class="concrete" x="20" y="110" width="28" height="360"/>
+        <rect class="steel" x="18" y="110" width="32" height="10"/>
+      </g>
+      <g id="plumeSmoke"></g>
+      <g class="part" data-stage="1">
+        <path class="coal" d="M58,470 Q105,380 152,470Z"/>
+        <path class="conveyor" d="M118,452 L162,404"/>
+        <rect class="invbox" x="158" y="398" width="34" height="46" rx="4"/>
+        <text class="lbl-s" x="175" y="390" text-anchor="middle">Molí</text>
+      </g>
+      <g class="part" data-stage="2">
+        <rect class="house" x="205" y="200" width="110" height="270"/>
+        <line class="ctube" x1="215" y1="232" x2="215" y2="462"/><line class="ctube" x1="305" y1="232" x2="305" y2="462"/>
+        <line class="ctube" x1="225" y1="232" x2="225" y2="380"/><line class="ctube" x1="295" y1="232" x2="295" y2="380"/>
+        <rect class="steel" x="228" y="206" width="64" height="18" rx="9"/>
+        ${C.flame(237, 458, 80, 26)}${C.flame(260, 458, 96, 30)}${C.flame(283, 458, 80, 26)}
+      </g>
+      <g id="pCoal"></g>
+      ${C.steamBlock({hx: 340, hw: 310, tx: 400, gx: 526, cx0: 420, ctx: 676, ctw: 102, trx: 800, tcx: 935,
+        steamD: 'M280,206 L280,190 L372,190 L372,360 L400,360',
+        feedD: 'M420,452 L392,452 L392,500 L260,500 L260,470',
+        coolD: ['M520,422 L702,422', 'M702,450 L520,450'],
+        cableD: 'M606,360 L620,360 L620,512 L780,512 L780,425 L800,425',
+        st: {turb: 3, gen: 4, cool: 5, trafo: 6, line: 6}})}
+      <text class="lbl-s" x="300" y="182">Vapor a 540 °C</text>
+      ${C.badge(1, 105, 400)}${C.badge(2, 240, 172)}${C.badge(3, 455, 318)}${C.badge(4, 566, 318)}${C.badge(5, 727, 330)}${C.badge(6, 768, 395)}${C.badge(7, 76, 180)}`,
+    stages: [
+      {name: 'Parc de carbó i molí', short: 'Parc de carbó', chips: `Emmagatzema ${chip('qui')}`,
+        text: "El carbó arriba en tren o en vaixell i s'apila al parc de carbó. Una cinta transportadora el porta al molí, que el tritura fins a fer-ne una pols molt fina. Així crema més ràpid i millor. El carbó guarda energia química, l'energia dels enllaços entre els seus àtoms, que es va acumular fa milions d'anys a partir de restes de plantes.",
+        formula: 'Carbó: ≈ 25 MJ per kg (poder calorífic)',
+        now: s => `Entren ${fmt(s.m, 1)} kg de carbó cada segon = ${mw(s.nodes[0])} d'energia química`,
+        fact: "<b>Sabies que…</b> el carbó, el petroli i el gas natural són combustibles fòssils: es van formar fa milions d'anys i no es poden renovar."},
+      {name: 'Caldera', chips: `${chip('qui')} ${ARROW} ${chip('ter')}`,
+        text: "A la caldera, la pols de carbó crema barrejada amb aire. La combustió és una reacció química que allibera molta calor (més de 1.000 °C). Aquesta calor escalfa l'aigua que circula per milers de tubs a les parets de la caldera i la converteix en vapor a alta pressió i a uns 540 °C.",
+        formula: 'Carbó + oxigen → CO₂ + calor',
+        now: s => `Calor que passa al vapor: ${mw(s.nodes[1])}`,
+        loss: 'Pèrdues: part de la calor marxa amb els fums calents per la xemeneia.',
+        fact: "<b>Sabies que…</b> la caldera d'una central gran pot fer més de 80 metres d'alçada."},
+      {name: 'Turbina de vapor', short: 'Turbina', chips: `${chip('ter')} ${ARROW} ${chip('mec')}`,
+        text: "El vapor a alta pressió entra a la turbina i empeny les seves pales, que la fan girar a 3.000 voltes per minut. L'energia tèrmica del vapor es transforma en energia mecànica de rotació. Mentre avança, el vapor es refreda i perd pressió; per això la turbina és més ampla al final.",
+        formula: "Calor del vapor → gir de l'eix",
+        now: s => `Energia mecànica a l'eix: ${mw(s.nodes[2])}`,
+        loss: 'Pèrdues: aquí es perd més energia. Més de la meitat de la calor del vapor no es pot convertir en moviment i acaba al condensador.',
+        fact: "<b>Sabies que…</b> les centrals nuclears, de carbó, de biomassa i solars tèrmiques tenen la mateixa turbina de vapor: el que canvia és com s'escalfa l'aigua."},
+      {name: 'Alternador', chips: `${chip('mec')} ${ARROW} ${chip('ele')}`,
+        text: "L'eix de la turbina fa girar el rotor de l'alternador, un electroimant, dins de les bobines de coure de l'estator. El camp magnètic que gira indueix un corrent elèctric a les bobines: és la inducció electromagnètica.",
+        formula: "Imant que gira dins d'una bobina → corrent elèctric (≈ 20 kV)",
+        now: s => `Energia elèctrica produïda: ${mw(s.nodes[3])}`,
+        loss: 'Pèrdues: calor a les bobines i fregament dels coixinets.',
+        fact: "<b>Sabies que…</b> la dinamo d'una bicicleta funciona com un alternador, però en petit."},
+      {name: 'Condensador i torre de refrigeració', short: 'Condensador i torre', chips: `Retira ${chip('loss', 'calor no aprofitable')}`,
+        text: "El vapor que surt de la turbina passa pel condensador, on es refreda amb aigua freda i torna a ser aigua líquida. Una bomba la torna a enviar a la caldera i el cicle comença de nou. L'aigua de refrigeració porta la calor a la torre de refrigeració, on una part s'evapora. El núvol blanc és vapor d'aigua.",
+        formula: 'Vapor → aigua líquida (es tanca el cicle)',
+        now: s => `Calor que es llença a l'ambient: ${mw(s.nodes[1] - s.nodes[2])}`,
+        loss: "Aquí surt la major part de l'energia que no s'aprofita, en forma de calor.",
+        fact: "<b>Sabies que…</b> si la central és a prop del mar o d'un riu gran, pot fer servir aquesta aigua per refrigerar en lloc d'una torre."},
+      {name: "Transformador i línia d'alta tensió", short: 'Transformador i línia', chips: `${chip('ele', 'Elèctrica (20 kV)')} ${ARROW} ${chip('ele', 'Elèctrica (400 kV)')}`,
+        text: "El transformador eleva la tensió de l'alternador (uns 20 kV) fins a 400 kV. Amb més tensió, cal menys intensitat de corrent i els cables s'escalfen menys. Les línies d'alta tensió porten l'electricitat a les ciutats, on es torna a baixar fins als 230 V de casa.",
+        formula: '20 kV → 400 kV → … → 230 V',
+        now: s => `Electricitat cap a la xarxa: ${mw(s.nodes[4])} (≈ ${fmt0(s.out * 1000 / .4)} llars)`,
+        loss: 'Pèrdues: una mica de calor al transformador i als cables.'},
+      {name: 'Xemeneia i fums', short: 'Xemeneia', chips: `Surten ${chip('loss', 'fums calents i CO₂')}`,
+        text: "Els fums de la combustió passen per filtres que retenen les cendres i part dels gasos contaminants, com el diòxid de sofre, i després surten per la xemeneia. Encara que es filtrin, porten molt de CO₂, un gas d'efecte hivernacle que contribueix al canvi climàtic.",
+        formula: 'C + O₂ → CO₂ (1 kg de carbó ≈ 2,4 kg de CO₂)',
+        now: s => `CO₂ emès: ${fmt0(s.co2)} tones cada hora`,
+        loss: 'Pèrdues: la calor que s\'emporten els fums calents.',
+        fact: "<b>Sabies que…</b> a Espanya s'han tancat gairebé totes les centrals de carbó els darrers anys per reduir les emissions de CO₂."}
+    ],
+    chain: {
+      nodes: [
+        {e: 'qui', name: 'Energia química', where: 'Carbó', stage: 1},
+        {e: 'ter', name: 'Energia tèrmica', where: 'Vapor a alta pressió (540 °C)', stage: 2},
+        {e: 'mec', name: 'Energia mecànica', where: "Gir de la turbina i l'eix", stage: 3},
+        {e: 'ele', name: 'Energia elèctrica', where: "Surt de l'alternador (20 kV)", stage: 4},
+        {e: 'ele', name: 'Energia elèctrica', where: 'Cap a la xarxa (400 kV)', stage: 6}
+      ],
+      conns: ['Caldera (combustió)', 'Turbina', 'Alternador', 'Transformador']
+    },
+    balance: [
+      {label: 'Energia elèctrica útil (surt a la xarxa)', c: cv('ele')},
+      {label: 'Calor llençada al condensador i a la torre', c: cv('loss')},
+      {label: 'Calor que marxa amb els fums per la xemeneia', c: cv('loss'), op: .7},
+      {label: "Calor a l'alternador", c: cv('loss'), op: .5},
+      {label: 'Calor al transformador', c: cv('loss'), op: .3}
+    ],
+    extraLabels: [{k: 'Carbó cremat', small: 'tones cada hora'}, {k: 'CO₂ emès', small: 'tones cada hora'}],
+    extra: s => [{v: fmt0(s.m * 3.6) + ' t/h'}, {v: fmt0(s.co2) + ' t/h'}],
+    note: s => `Energia química del carbó = massa × poder calorífic = ${fmt(s.m, 1)} kg/s × 25 MJ/kg = <b>${mw(s.nodes[0])}</b>`,
+    questions: [
+      ['Per què es tritura el carbó abans de cremar-lo?', 'La pols té molta més superfície en contacte amb l\'oxigen de l\'aire, així que crema més ràpid i de manera més completa.'],
+      ['En quina part es perd més energia?', 'Al condensador i a la torre de refrigeració: més de la meitat de l\'energia es llença com a calor. També se\'n perd una part amb els fums.'],
+      ['Si dobles el carbó, què passa amb l\'electricitat i el CO₂?', 'Es doblen les dues coses. Prova-ho amb el control: com més electricitat produeix, més CO₂ emet.'],
+      ['Per què diem que contamina?', 'La combustió del carbó emet CO₂ (efecte hivernacle) i altres gasos i partícules que, encara que es filtrin, embruten l\'aire i poden provocar pluja àcida.'],
+      ['És una energia renovable?', 'No. El carbó es va formar fa milions d\'anys i, quan el cremem, no el podem tornar a fer.'],
+      ['Quina diferència hi ha amb una central hidroelèctrica?', 'A la tèrmica, l\'energia química passa a tèrmica i després a mecànica. A la hidroelèctrica, l\'energia potencial de l\'aigua passa a cinètica i després a mecànica. A partir de la turbina, les dues funcionen igual.']
+    ],
+    init(s, api) {
+      s.k = s.k ?? s.c.carbo / 60;
+      coal = api.parts('pCoal', 'M112,452 L162,404 L176,404 L176,425 L208,425', 10, 3.6, () => cv('qui'));
+      steam = api.parts('pSteam', 'M280,206 L280,190 L372,190 L372,360 L490,360 L490,425', 22, 4, q => q < .83 ? cv('ter') : 'var(--muted)');
+      feed = api.parts('pFeed', 'M420,452 L392,452 L392,500 L260,500 L260,466', 12, 3.4, () => 'var(--water-top)');
+      cool = api.parts('pCool', 'M520,422 L702,422 L702,450 L520,450', 16, 3.4, q => q < .46 ? cv('ter') : 'var(--water-top)');
+      plumeCT = api.plume('plumeCT', 727, 228, {n: 9, rise: 30, drift: 18, grow: 13, r0: 11});
+      smoke = api.plume('plumeSmoke', 34, 104, {n: 10, cls: 'smoke', rise: 28, drift: 22, grow: 10, r0: 8});
+    },
+    update(s, dt) {
+      s.k = ease(s.k, s.c.carbo / 60, dt, .8);
+      s.m = s.k * 60;
+      const P0 = s.m * PCI, n1 = P0 * .88, n2 = n1 * .43, n3 = n2 * .985, n4 = n3 * .995;
+      s.nodes = [P0, n1, n2, n3, n4];
+      s.conn = [`−${mw(P0 - n1)} pels fums`, `−${mw(n1 - n2)} al condensador`, `−${mw(n2 - n3)} calor`, `−${mw(n3 - n4)} calor`];
+      s.segs = [n4, n1 - n2, P0 - n1, n2 - n3, n3 - n4];
+      s.out = n4; s.eff = P0 > .5 ? n4 / P0 : null; s.elec = s.k / 1; s.barMax = P0;
+      s.spin = 450 * Math.sqrt(s.k / .67 > 1 ? 1 : s.k / .67);
+      s.flame = s.k / 0.67 > 1.2 ? 1.2 : s.k / .67;
+      s.co2 = s.m * 2.4 * 3.6;
+      s.status = P0 < .5 ? "No entra carbó a la caldera: no hi ha combustió, ni vapor, ni electricitat." : '';
+    },
+    animate(s, t, dt) {
+      const k = clamp(s.k / .67, 0, 1);
+      coal.step(dt, 20 + 50 * k, k);
+      steam.step(dt, 40 + 140 * k, k);
+      feed.step(dt, 30 + 60 * k, k);
+      cool.step(dt, 30 + 80 * k, k);
+      plumeCT.step(dt, k);
+      smoke.step(dt, k * .8);
+    }
+  };
+  START([cfg]);
+})();
+
+</script>
+</body>
+</html>
